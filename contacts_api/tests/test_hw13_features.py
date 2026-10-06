@@ -209,3 +209,24 @@ def test_reset_password_rejects_other_tokens(client):
     for token in ("garbage", access):
         resp = client.post("/api/auth/reset_password", json={"token": token, "new_password": "whatever1"})
         assert resp.status_code == 400
+
+# ---------- security fixes ----------
+
+def test_auth_endpoints_are_rate_limited_per_ip(client, monkeypatch, outbox):
+    from src.conf.config import settings
+    monkeypatch.setattr(settings, "rate_limit_auth", "3/minute")
+    codes = [client.post("/api/auth/forgot_password", json={"email": f"x{i}@example.com"}).status_code
+             for i in range(4)]
+    assert codes == [200, 200, 200, 429]
+    codes = [login(client, "wrong-pass").status_code for _ in range(4)]
+    assert codes[-1] == 429
+
+
+def test_login_checks_password_hash_even_for_unknown_email(client, monkeypatch):
+    from src.services import auth as auth_service
+    checked = []
+    real = auth_service.verify_password
+    monkeypatch.setattr(auth_service, "verify_password", lambda p, h: checked.append(h) or real(p, h))
+    resp = client.post("/api/auth/login", json={"email": "nobody@example.com", "password": "whatever"})
+    assert resp.status_code == 401
+    assert checked == [auth_service.DUMMY_HASH]

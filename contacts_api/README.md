@@ -8,6 +8,7 @@ FastAPI + SQLAlchemy 2 + PostgreSQL + Alembic + Redis. Продовження Д
 |---|---|
 | Верифікація email | після `signup` на пошту приходить посилання `GET /api/auth/confirmed_email/{token}`; без підтвердження `login` → 401 `Email not confirmed`; повторно надіслати лист — `POST /api/auth/request_email` |
 | Обмеження запитів | [slowapi](https://github.com/laurentS/slowapi), ліміти рахуються **для кожного користувача** (email з токена), сховище — Redis. Створення контакту — `RATE_LIMIT_CREATE_CONTACT` (5/хв), решта `/api/contacts/*` — `RATE_LIMIT_CONTACTS` (30/хв). Перевищення → 429 |
+| Захист auth | `signup`, `login`, `request_email`, `forgot_password`, `reset_password` обмежені `RATE_LIMIT_AUTH` (5/хв з однієї IP) — від підбору паролів і спаму листами. `JWT_SECRET_KEY` обов'язковий, значення за замовчуванням у коді немає |
 | CORS | `CORSMiddleware`, дозволені origin-и в `CORS_ORIGINS` |
 | Аватар | `PATCH /api/users/avatar` (multipart, поле `file`), завантаження в Cloudinary, URL зберігається в `users.avatar` |
 | *Кешування (Redis)* | `get_current_user` спочатку читає користувача з Redis (`user:<email>`, TTL `USER_CACHE_TTL_SECONDS`), інакше з БД і кладе в кеш. Пароль і refresh токен у кеш не потрапляють. Кеш скидається після зміни аватара, підтвердження email і скидання пароля |

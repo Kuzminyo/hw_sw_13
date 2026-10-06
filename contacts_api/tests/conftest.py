@@ -3,6 +3,8 @@ import os
 # must be set before the app (and its settings) is imported
 os.environ["RATE_LIMIT_STORAGE_URI"] = "memory://"
 os.environ["CORS_ORIGINS"] = "http://localhost:3000"
+os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key-only-for-pytest")
+os.environ["RATE_LIMIT_AUTH"] = "1000/minute"
 
 import fakeredis
 import pytest

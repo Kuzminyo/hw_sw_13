@@ -33,6 +33,10 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return bcrypt.checkpw(plain_password.encode("utf-8")[:72], hashed_password.encode("utf-8"))
 
 
+# compared against when the email is unknown, to keep login timing the same
+DUMMY_HASH = hash_password("dummy-password-for-timing")
+
+
 # ---------- tokens ----------
 
 def _create_token(email: str, scope: str, expires_delta: timedelta, **claims) -> str:

@@ -4,7 +4,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg2://postgres:postgres@localhost:5432/contacts_db"
 
-    jwt_secret_key: str = "change_me"
+    jwt_secret_key: str  # required, no default: a known key would let anyone forge tokens
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 15
     refresh_token_expire_days: int = 7
@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     # Rate limits, format of the `limits` library: "<count>/<period>"
     rate_limit_contacts: str = "30/minute"
     rate_limit_create_contact: str = "5/minute"
+    # login / signup / emails: per IP, protects from password guessing and email flooding
+    rate_limit_auth: str = "5/minute"
     rate_limit_storage_uri: str | None = None  # default: the Redis above
 
     # comma separated list, e.g. "http://localhost:3000,http://127.0.0.1:5173"

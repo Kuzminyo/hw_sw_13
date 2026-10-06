@@ -6,6 +6,7 @@ from fastapi.responses import HTMLResponse
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
+from src.conf.config import settings
 from src.database.db import get_db
 from src.database.models import User
 from src.repository import users as repository_users
@@ -21,8 +22,14 @@ from src.schemas import (
 from src.services import auth as auth_service
 from src.services import cache
 from src.services.email import send_reset_password_email, send_verification_email
+from src.services.limiter import limiter
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+
+def AUTH_LIMIT() -> str:
+    return settings.rate_limit_auth
 
 INVALID_CREDENTIALS = HTTPException(
     status_code=status.HTTP_401_UNAUTHORIZED,
@@ -83,6 +90,7 @@ def send_confirmation(background_tasks: BackgroundTasks, request: Request, user:
 
 
 @router.post("/signup", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit(AUTH_LIMIT)
 def signup(
     body: UserCreate,
     background_tasks: BackgroundTasks,
@@ -101,12 +109,17 @@ def signup(
 
 
 @router.post("/login", response_model=TokenResponse, openapi_extra=LOGIN_OPENAPI)
+@limiter.limit(AUTH_LIMIT)
 def login(
-    body: UserLogin = Depends(get_login_credentials), db: Session = Depends(get_db)
+    request: Request,
+    body: UserLogin = Depends(get_login_credentials),
+    db: Session = Depends(get_db),
 ):
     """Log in with email and password; returns an access/refresh token pair."""
     user = repository_users.get_user_by_email(body.email, db)
-    if user is None or not auth_service.verify_password(body.password, user.password):
+    # check a dummy hash for unknown emails so the response time does not reveal them
+    hashed = user.password if user is not None else auth_service.DUMMY_HASH
+    if not auth_service.verify_password(body.password, hashed) or user is None:
         raise INVALID_CREDENTIALS
     if not user.confirmed:
         raise HTTPException(
@@ -173,6 +186,7 @@ def confirmed_email(token: str, db: Session = Depends(get_db)):
 
 
 @router.post("/request_email", response_model=MessageResponse)
+@limiter.limit(AUTH_LIMIT)
 def request_email(
     body: RequestEmail,
     background_tasks: BackgroundTasks,
@@ -189,6 +203,7 @@ def request_email(
 # ---------- password reset ----------
 
 @router.post("/forgot_password", response_model=MessageResponse)
+@limiter.limit(AUTH_LIMIT)
 def forgot_password(
     body: RequestEmail,
     background_tasks: BackgroundTasks,
@@ -220,7 +235,8 @@ def get_user_for_reset(token: str, db: Session) -> User:
 
 
 @router.post("/reset_password", response_model=MessageResponse)
-def reset_password(body: ResetPassword, db: Session = Depends(get_db)):
+@limiter.limit(AUTH_LIMIT)
+def reset_password(request: Request, body: ResetPassword, db: Session = Depends(get_db)):
     """Set a new password using the token from the email. All sessions are logged out."""
     user = get_user_for_reset(body.token, db)
     repository_users.update_password(user, auth_service.hash_password(body.new_password), db)
