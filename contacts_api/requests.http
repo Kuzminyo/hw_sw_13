@@ -1,0 +1,82 @@
+@base = http://127.0.0.1:8013
+
+### Реєстрація -> 201, лист із посиланням з'явиться в Mailpit: http://127.0.0.1:8025
+POST {{base}}/api/auth/signup
+Content-Type: application/json
+
+{"username": "dima", "email": "dima@example.com", "password": "secret123"}
+
+### Логін до підтвердження email -> 401 "Email not confirmed"
+POST {{base}}/api/auth/login
+Content-Type: application/json
+
+{"email": "dima@example.com", "password": "secret123"}
+
+### Надіслати лист підтвердження ще раз
+POST {{base}}/api/auth/request_email
+Content-Type: application/json
+
+{"email": "dima@example.com"}
+
+### (відкрийте посилання з листа, потім) Логін -> access_token + refresh_token
+# @name login
+POST {{base}}/api/auth/login
+Content-Type: application/json
+
+{"email": "dima@example.com", "password": "secret123"}
+
+### Поточний користувач (друге звернення береться з кешу Redis)
+GET {{base}}/api/users/me
+Authorization: Bearer {{login.response.body.access_token}}
+
+### Оновити аватар (Cloudinary)
+PATCH {{base}}/api/users/avatar
+Authorization: Bearer {{login.response.body.access_token}}
+Content-Type: multipart/form-data; boundary=boundary
+
+--boundary
+Content-Disposition: form-data; name="file"; filename="avatar.png"
+Content-Type: image/png
+
+< ./avatar.png
+--boundary--
+
+### Оновити пару токенів
+GET {{base}}/api/auth/refresh_token
+Authorization: Bearer {{login.response.body.refresh_token}}
+
+### Створити контакт -> 201 (6-й запит за хвилину -> 429)
+POST {{base}}/api/contacts/
+Authorization: Bearer {{login.response.body.access_token}}
+Content-Type: application/json
+
+{"first_name": "Ann", "last_name": "Lee", "email": "ann@example.com", "phone": "+380501112233", "birthday": "1992-03-04", "additional_info": "колега"}
+
+### Список / пошук
+GET {{base}}/api/contacts/?first_name=an
+Authorization: Bearer {{login.response.body.access_token}}
+
+### Дні народження на 7 днів вперед
+GET {{base}}/api/contacts/birthdays?days=7
+Authorization: Bearer {{login.response.body.access_token}}
+
+### CORS preflight
+OPTIONS {{base}}/api/contacts/
+Origin: http://localhost:3000
+Access-Control-Request-Method: POST
+
+### Забули пароль -> лист із посиланням на форму в Mailpit
+POST {{base}}/api/auth/forgot_password
+Content-Type: application/json
+
+{"email": "dima@example.com"}
+
+### Скинути пароль токеном з листа (або через форму за посиланням)
+POST {{base}}/api/auth/reset_password
+Content-Type: application/json
+
+{"token": "<token з листа>", "new_password": "newsecret123"}
+
+### Вихід -> 204
+POST {{base}}/api/auth/logout
+Authorization: Bearer {{login.response.body.access_token}}

@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+
+{% block title %}Sign up | Quotes to Scrape{% endblock %}
+
+{% block content %}
+<div class="form-box">
+    <h2>Sign up</h2>
+    <form method="post" novalidate>
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="btn">Create account</button>
+    </form>
+    <p>Already registered? <a href="{% url 'users:login' %}">Login</a></p>
+</div>
+{% endblock %}

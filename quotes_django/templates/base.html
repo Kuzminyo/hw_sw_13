@@ -1,0 +1,37 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Quotes to Scrape{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'style.css' %}">
+</head>
+<body>
+<div class="container">
+    <header class="header">
+        <h1><a href="{% url 'quotes:index' %}">Quotes to Scrape</a></h1>
+        <nav>
+            {% if user.is_authenticated %}
+                <span class="hello">Hi, {{ user.username }}</span>
+                <a href="{% url 'quotes:add_author' %}">Add author</a>
+                <a href="{% url 'quotes:add_quote' %}">Add quote</a>
+                <form method="post" action="{% url 'users:logout' %}" class="inline">
+                    {% csrf_token %}<button type="submit" class="link">Logout</button>
+                </form>
+            {% else %}
+                <a href="{% url 'users:login' %}">Login</a>
+                <a href="{% url 'users:register' %}">Sign up</a>
+            {% endif %}
+        </nav>
+    </header>
+
+    {% for message in messages %}
+        <div class="message {{ message.tags }}">{{ message }}</div>
+    {% endfor %}
+
+    {% block content %}{% endblock %}
+
+    <footer class="footer">Django clone of quotes.toscrape.com</footer>
+</div>
+</body>
+</html>

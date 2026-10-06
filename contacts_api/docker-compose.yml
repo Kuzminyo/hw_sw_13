@@ -1,0 +1,67 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: hw13_contacts_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: hw13_contacts_redis
+    restart: unless-stopped
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
+    ports:
+      - "${REDIS_PORT}:6379"
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep PONG"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+
+  # local SMTP server that catches all emails; web UI: http://localhost:8025
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: hw13_contacts_mailpit
+    restart: unless-stopped
+    ports:
+      - "${MAILPIT_SMTP_PORT:-1025}:1025"
+      - "${MAILPIT_UI_PORT:-8025}:8025"
+
+  app:
+    build: .
+    container_name: hw13_contacts_app
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # inside the compose network services are reachable by their names
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      MAIL_SERVER: ${MAIL_SERVER_IN_DOCKER:-mailpit}
+      MAIL_PORT: ${MAIL_PORT_IN_DOCKER:-1025}
+    ports:
+      - "${APP_PORT:-8013}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+
+volumes:
+  pgdata:

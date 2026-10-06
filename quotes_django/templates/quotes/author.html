@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ author.fullname }} | Quotes to Scrape{% endblock %}
+
+{% block content %}
+<div class="author-details">
+    <h3 class="author-title">{{ author.fullname }}</h3>
+    <p>
+        {% if author.born_date %}<strong>Born:</strong> <span class="author-born-date">{{ author.born_date }}</span>{% endif %}
+        {% if author.born_location %}<span class="author-born-location">in {{ author.born_location }}</span>{% endif %}
+    </p>
+    <div class="author-description">{{ author.description|linebreaks }}</div>
+
+    <h4>Quotes</h4>
+    {% for quote in author.quotes.all %}
+        <div class="quote"><span class="text">{{ quote.quote }}</span></div>
+    {% empty %}
+        <p class="empty">No quotes by this author yet.</p>
+    {% endfor %}
+</div>
+{% endblock %}

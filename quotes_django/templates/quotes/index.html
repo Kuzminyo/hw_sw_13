@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row">
+    <main class="col-main">
+        {% if tag %}
+            <h3>Viewing tag: <a href="{% url 'quotes:tag' tag.name %}">{{ tag.name }}</a></h3>
+        {% endif %}
+
+        {% for quote in page_obj %}
+            <div class="quote">
+                <span class="text">{{ quote.quote }}</span>
+                <span>by <small class="author">{{ quote.author.fullname }}</small>
+                    <a href="{% url 'quotes:author' quote.author.id %}">(about)</a></span>
+                <div class="tags">
+                    Tags:
+                    {% for t in quote.tags.all %}
+                        <a class="tag" href="{% url 'quotes:tag' t.name %}">{{ t.name }}</a>
+                    {% endfor %}
+                </div>
+            </div>
+        {% empty %}
+            <p class="empty">No quotes yet.
+                {% if user.is_authenticated %}Use the scrape button or add one.{% else %}Log in to add some.{% endif %}
+            </p>
+        {% endfor %}
+
+        <nav>
+            <ul class="pager">
+                {% if page_obj.has_previous %}
+                    <li class="previous"><a href="?page={{ page_obj.previous_page_number }}"><span>&larr;</span> Previous</a></li>
+                {% endif %}
+                {% if page_obj.has_next %}
+                    <li class="next"><a href="?page={{ page_obj.next_page_number }}">Next <span>&rarr;</span></a></li>
+                {% endif %}
+            </ul>
+        </nav>
+    </main>
+
+    <aside class="col-side">
+        <section class="tags-box">
+            <h2>Top Ten tags</h2>
+            {% for t in top_tags %}
+                <span class="tag-item">
+                    {% widthratio t.num top_tags.0.num 14 as extra %}
+                    <a class="tag" style="font-size: {{ extra|add:12 }}px"
+                       href="{% url 'quotes:tag' t.name %}">{{ t.name }}</a>
+                </span>
+            {% empty %}
+                <p class="empty">No tags yet.</p>
+            {% endfor %}
+        </section>
+
+        {% if user.is_authenticated %}
+            <section class="scrape-box">
+                <h2>Fill database</h2>
+                <p>Scrape all quotes and authors from quotes.toscrape.com.</p>
+                <form method="post" action="{% url 'quotes:scrape' %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn">Scrape quotes.toscrape.com</button>
+                </form>
+            </section>
+        {% endif %}
+    </aside>
+</div>
+{% endblock %}
