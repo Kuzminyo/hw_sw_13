@@ -1,6 +1,7 @@
 services:
   postgres:
     image: postgres:16
+    restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -9,13 +10,41 @@ services:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
 
   # local SMTP server for password reset emails; web UI: http://localhost:8026
   mailpit:
     image: axllent/mailpit:latest
+    restart: unless-stopped
     ports:
       - "${EMAIL_PORT:-1026}:1025"
       - "${MAILPIT_UI_PORT:-8026}:8025"
+
+  web:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # inside the compose network services are reachable by their names
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      EMAIL_HOST: mailpit
+      EMAIL_PORT: 1025
+      # MongoDB from HW #9 runs on the host machine
+      MONGO_URI: ${MONGO_URI_IN_DOCKER:-mongodb://host.docker.internal:27017}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "${WEB_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
 
 volumes:
   pgdata:
